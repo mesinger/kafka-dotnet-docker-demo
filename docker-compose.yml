@@ -1,0 +1,73 @@
+version: '3.7'
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:6.1.0
+    container_name: zookeeper
+
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+    networks:
+      - kafka
+
+  broker:
+    image: confluentinc/cp-kafka:6.1.0
+    container_name: broker
+
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9092
+      KAFKA_BROKER_ID: 0
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "payments:1:1,laundery-check:1:1"
+
+    networks:
+      - kafka
+      - transaction-service
+      - money-laundering
+      - core-banking
+
+    # ports:
+    #   - 9092:9092
+
+  core-banking-system-ok:
+    build: ./src/core-banking-system
+    container_name: core-banking-system
+
+    networks:
+      - core-banking
+
+    entrypoint: ["dotnet", "/app/core-banking-system.dll", "-b", "broker:9092", "-s", "a", "-r", "b", "-a", "100"]
+
+  core-banking-system-declined:
+    build: ./src/core-banking-system
+    container_name: core-banking-system-declined
+
+    networks:
+      - core-banking
+
+    entrypoint: ["dotnet", "/app/core-banking-system.dll", "-b", "broker:9092", "-s", "a", "-r", "b", "-a", "100000"]
+
+  money-laundering-service:
+    build: ./src/money-laundering-service
+    container_name: money-laundering-service
+
+    networks:
+      - money-laundering
+
+    entrypoint: ["dotnet", "/app/money-laundering-service.dll", "-b", "broker:9092"]
+
+  transaction-analytics-service:
+    build: ./src/transaction-analytics-service
+    container_name: transaction-analytics-service
+
+    networks:
+      - transaction-service
+
+networks:
+  kafka:
+  transaction-service:
+  money-laundering:
+  core-banking:
+
